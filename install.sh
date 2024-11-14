@@ -1,5 +1,9 @@
 #!/bin/sh
 
+#Caminho para o arquivo de chaves SSH
+KEYS=$1
+#####################################
+
 echo "Esse script requer permissão de root para modificar o sistema"
 sudo echo ""
 
@@ -38,13 +42,6 @@ sudo apt install code
 
 echo #blank line
 echo #blank line
-
-#Repositório Brave
-#sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-#echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main"|sudo tee /etc/apt/sources.list.d/brave-browser-release.list
-#sudo apt update
-#echo "Instalando Brave Browser"
-#sudo apt install brave-browser
 
 #Repositório flatpak
 echo "Adicionando repositório Flatpak"
@@ -97,7 +94,7 @@ echo #blank line
 echo "Configurando grupos de permissões"
 sudo usermod -G docker -a $USER
 
-if [ -e keys.zip ]; then
+if [ -e $KEYS ]; then
 	echo "Recuperando chaves ssh"
 	if [ ! -e $HOME/.ssh ]; then
 		mkdir $HOME/.ssh
@@ -116,6 +113,7 @@ sudo usermod -s $(which zsh) $USER
 #sudo chsh -s $(which zsh) $USER
 echo "Instalando o OhMyZSH"
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+sudo omz theme set sonicradish
 #Plugins adicionais para OhMyZSH
 echo "Adicionando plugins a configuração do OhMyZSH"
 #echo "nano ~/.zshrc"
