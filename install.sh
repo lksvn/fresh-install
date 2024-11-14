@@ -99,7 +99,7 @@ if [ -e $KEYS ]; then
 	if [ ! -e $HOME/.ssh ]; then
 		mkdir $HOME/.ssh
 	fi
-	unzip keys.zip -d $HOME/.ssh
+	unzip $KEYS -d $HOME/.ssh
 else
 	echo "O arquivo de chaves ssh não está presente."
 fi
