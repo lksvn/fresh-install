@@ -29,6 +29,23 @@ sudo apt install -y curl wget gpg build-essential flatpak git docker.io docker-c
 echo #blank line
 echo #blank line
 
+# Repositório NodeSource
+echo "Adicionando repositório NodeSource"
+curl -fsSL https://deb.nodesource.com/setup_23.x -o nodesource_setup.sh
+sudo -E bash nodesource_setup.sh
+# Instala o NodeJS
+echo "Instalando - NodeJS"
+sudo apt-get install -y nodejs
+# Instala o NPM
+echo "Instalando - NPM"
+sudo npm install -g npm
+# Instala o NPM Version Manager
+echo "Instalando - NPM Version Manager"
+sudo npm install -g n
+
+echo #blank line
+echo #blank line
+
 #Repositório Microsoft
 echo "Adicionando repositório Microsoft"
 wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
