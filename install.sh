@@ -1,58 +1,54 @@
 #!/bin/sh
 
-#Caminho para o arquivo de chaves SSH
-KEYS=$1
-#####################################
-
-echo "Esse script requer permissão de root para modificar o sistema"
+echo "This script requires root permission to modify the system"
 sudo echo ""
 
-echo "Hotfix para desabilitar comandos no teclado para apple"
+echo "Hotfix to disable keyboard commands for Apple keyboards"
 echo "options hid_apple fnmode=0" | sudo tee -a /etc/modprobe.d/hid_apple.conf
 
 echo #blank line
 echo #blank line
 
-# Atualiza a base do sistema
-echo "Atualizando o sistema"
+# Update the system
+echo "Updating the system"
 sudo apt update -y
 sudo apt upgrade -y
 
 echo #blank line
 echo #blank line
 
-# Instala os pacotes apt
-echo "Instalando aplicações via APT"
-echo "CURL | WGET | GPG | BUILD ESSENTIALS | FLATPAK | GIT | DOCKER | DOCKER COMPOSER | zSH | POEDIT | MYSQL CLIENT | PHP CLIENT | PHP-XML | HTOP"
-sudo apt install -y curl wget gpg build-essential flatpak git docker.io docker-compose zsh poedit mysql-client htop php-cli php-xml
+# Install apt packages
+echo "Installing applications via APT"
+echo "CURL | WGET | GPG | BUILD ESSENTIALS | FLATPAK | GIT | DOCKER | DOCKER COMPOSER | zSH | POEDIT | MYSQL CLIENT | POSTGRESQL CLIENT | PHP CLIENT | PHP-XML | HTOP | NEOFETCH"
+sudo apt install -y curl wget gpg build-essential flatpak git docker.io docker-compose zsh poedit mysql-client postgresql-client htop neofetch php-cli php-xml
 
 echo #blank line
 echo #blank line
 
-# Repositório NodeSource
-echo "Adicionando repositório NodeSource"
+# NodeSource repository
+echo "Adding NodeSource repository"
 curl -fsSL https://deb.nodesource.com/setup_23.x -o nodesource_setup.sh
 sudo -E bash nodesource_setup.sh
-# Instala o NodeJS
-echo "Instalando - NodeJS"
+# Install NodeJS
+echo "Installing - NodeJS"
 sudo apt-get install -y nodejs
-# Instala o NPM
-echo "Instalando - NPM"
+# Install NPM
+echo "Installing - NPM"
 sudo npm install -g npm
-# Instala o NPM Version Manager
-echo "Instalando - NPM Version Manager"
+# Install NPM Version Manager
+echo "Installing - NPM Version Manager"
 sudo npm install -g n
 
 echo #blank line
 echo #blank line
 
-#Repositório Microsoft
-echo "Adicionando repositório Microsoft"
+#Microsoft repository
+echo "Adding Microsoft repository"
 wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
 sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
 sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
 rm -f packages.microsoft.gpg
-echo "Instalando - Visual Studio Code"
+echo "Installing - Visual Studio Code"
 sudo apt install apt-transport-https
 sudo apt update
 sudo apt install code
@@ -60,79 +56,103 @@ sudo apt install code
 echo #blank line
 echo #blank line
 
-#Repositório flatpak
-echo "Adicionando repositório Flatpak"
+#Flatpak repository
+echo "Adding Flatpak repository"
 sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-# Pacotes flatpak
-echo "Instalandos os pacotes Flatpak"
-#echo "Instalando - Google Chrome"
+# Flatpak packages
+echo "Installing Flatpak packages"
+#echo "Installing - Google Chrome"
 #flatpak install -y flathub com.google.Chrome # Google Chrome
-echo "Instalando - Slack"
+echo "Installing - Slack"
 flatpak install -y flathub com.slack.Slack # Slack
-echo "Instalando - DBeaver"
+echo "Installing - DBeaver"
 flatpak install -y flathub io.dbeaver.DBeaverCommunity # Dbeaver
-echo "Instalando - PostMan"
+echo "Installing - PostMan"
 flatpak install -y flathub com.getpostman.Postman # Postman
-echo "Instalando - Docker GUI"
+echo "Installing - Docker GUI"
 flatpak install -y flathub com.github.sdv43.whaler # Docker GUI
-echo "Instalando - Flat Seal"
-flatpak install -y flathub com.github.tchx84.Flatseal # Flat Seal - Gerenciador Permissões Flatpak
-#flatpak install flathub org.gnome.DejaDup #Gerenciador de backup
-echo "Buscando por atualizações nos pacotes"
+echo "Installing - Flat Seal"
+flatpak install -y flathub com.github.tchx84.Flatseal # Flat Seal - Flatpak Permission Manager
+echo "Installing - Obsidian"
+flatpak install -y flathub md.obsidian.Obsidian # Obsidian - Notes
+#flatpak install flathub org.gnome.DejaDup #Backup manager
+echo "Checking for package updates"
 sudo flatpak update
 
 echo #blank line
 echo #blank line
 
-#MongoDB compass
-echo "Baixando - MongoDB Compass"
+#MongoDB Compass
+echo "Downloading - MongoDB Compass"
 wget https://downloads.mongodb.com/compass/mongodb-compass_1.44.5_amd64.deb
-echo "Instalando - MongoDB Compass"
+echo "Installing - MongoDB Compass"
 sudo apt install ./mongodb-compass_1.44.5_amd64.deb
-echo "Removendo arquivo"
+echo "Removing file"
 rm ./mongodb-compass_1.44.5_amd64.deb
 
 echo #blank line
 echo #blank line
 
-# Pacotes snap
-echo "Instalandos os pacotes Snapcraft"
-echo "Instalando - MySQL Workbench Community"
+# Brave Browser
+echo "Adding Brave repository"
+sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
+sudo apt update
+sudo apt install brave-browser
+
+echo #blank line
+echo #blank line
+
+# Syncthing
+echo "Adding Syncthing repository"
+sudo mkdir -p /etc/apt/keyrings
+sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable-v2" | sudo tee /etc/apt/sources.list.d/syncthing.list
+printf "Package: *\nPin: origin apt.syncthing.net\nPin-Priority: 990\n" | sudo tee /etc/apt/preferences.d/syncthing.pref
+echo "Installing - Syncthing"
+sudo apt-get update
+sudo apt-get install -y syncthing
+
+echo #blank line
+echo #blank line
+
+# Snap packages
+echo "Installing Snapcraft packages"
+echo "Installing - MySQL Workbench Community"
 sudo snap install mysql-workbench-community
-echo "Instalando - Brave Browser"
-sudo snap install brave
-echo "Buscando por atualizações nos pacotes"
+echo "Checking for package updates"
 sudo snap refresh
 
 echo #blank line
 echo #blank line
 
-# Grupos de permissões
-echo "Configurando grupos de permissões"
+# Permission groups
+echo "Configuring permission groups"
 sudo usermod -G docker -a $USER
 
-if [ -e $KEYS ]; then
-	echo "Recuperando chaves ssh"
-	if [ ! -e $HOME/.ssh ]; then
-		mkdir $HOME/.ssh
-	fi
-	unzip $KEYS -d $HOME/.ssh
+# SSH key generation
+echo "Setting up SSH key"
+if [ ! -e "$HOME/.ssh/id_ed25519" ]; then
+	mkdir -p "$HOME/.ssh"
+	ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)-fresh-install" -N "" -f "$HOME/.ssh/id_ed25519"
+	eval "$(ssh-agent -s)"
+	ssh-add "$HOME/.ssh/id_ed25519"
 else
-	echo "O arquivo de chaves ssh não está presente."
+	echo "SSH key already exists, skipping generation."
 fi
 
 echo #blank line
 echo #blank line
 
-# Instala o OhMyZSH
-echo "Alterando shell padrão para o OhMyZSH"
+# Install OhMyZSH
+echo "Changing default shell to OhMyZSH"
 sudo usermod -s $(which zsh) $USER
 #sudo chsh -s $(which zsh) $USER
-echo "Instalando o OhMyZSH"
+echo "Installing OhMyZSH"
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 sudo omz theme set sonicradish
-#Plugins adicionais para OhMyZSH
-echo "Adicionando plugins a configuração do OhMyZSH"
+#Additional plugins for OhMyZSH
+echo "Adding plugins to OhMyZSH config"
 #echo "nano ~/.zshrc"
 echo "GIT | DOCKER | DOCKER COMPOSER | HISTORY"
 echo "plugins=(git docker docker-compose history)" | sudo tee -a ~/.zshrc
@@ -140,18 +160,18 @@ echo "plugins=(git docker docker-compose history)" | sudo tee -a ~/.zshrc
 echo #blank line
 echo #blank line
 
-#Diretório de projetos
-echo "Criando diretório de projetos"
+#Project directory
+echo "Creating project directory"
 mkdir $HOME/www
 
 echo #blank line
 echo #blank line
 
-#Cria uma subrede para o docker
-echo "Criando subrede para o Docker"
+#Creates a Docker subnet
+echo "Creating Docker subnet"
 sudo docker network create --subnet 172.18.0.0/16 devnet
 #Containers
-echo "Criando containers Docker"
+echo "Creating Docker containers"
 echo "Container - PHP 7"
 sudo docker run --network devnet --ip 172.18.0.10 -td --name php7 -p 80:80 -v $HOME/www:/www lhuggler/php7-xdebug
 echo "Container - MySQL 5.7"
@@ -161,7 +181,19 @@ sudo docker run --network devnet --ip 172.18.0.30 -d --name mongo -p 27017:27017
 
 echo #blank line
 echo #blank line
+echo "============================================"
+echo "  FRESH INSTALL COMPLETE!"
+echo "============================================"
+echo #blank line
+echo "Add this SSH public key to your GitHub:"
+echo "  https://github.com/settings/ssh/new"
+echo #blank line
+cat "$HOME/.ssh/id_ed25519.pub"
+echo #blank line
+echo "============================================"
+echo #blank line
+echo #blank line
 
-echo "O sistema irá reiniciar em 10s, pressione CTRL+C para cancelar"
+echo "System will reboot in 10s, press CTRL+C to cancel"
 sleep 10
 reboot 

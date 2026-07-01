@@ -2,49 +2,54 @@
 
 ## Usage
 
-Parâmetro 1: Caminho para o arquivo de chaves SSH
-
 ```sh 
-./install.sh ./keys.zip
+./install.sh
 ```
+
 ## Contents
 
-- Hotfix para teclados com comandos/modo Apple (MAC)
-- Visual Studio Code via repositório oficial Microsoft
-- MongoDB Compass v1.44.5 via arquivo `.deb` (Remove o arquivo após instalar)
-- Instala as seguintes aplicações básicas via **APT**
+- Hotfix for Apple keyboard command mode (MAC)
+- Full system update (apt update + upgrade)
+- Visual Studio Code via official Microsoft repository
+- MongoDB Compass v1.44.5 via `.deb` file (Removes the file after installation)
+- **Node.js 23.x**, NPM and NPM Version Manager (`n`) via NodeSource
+- Installs the following basic applications via **APT**
   - CURL
-  - WGET 
-  - GPG 
-  - BUILD ESSENTIALS 
-  - FLATPAK 
-  - GIT 
-  - DOCKER 
-  - DOCKER COMPOSER 
-  - zSH 
-  - POEDIT 
-  - MYSQL CLIENT 
-  - PHP CLIENT 
-  - PHP-XML 
+  - WGET
+  - GPG
+  - BUILD ESSENTIALS
+  - FLATPAK
+  - GIT
+  - DOCKER
+  - DOCKER COMPOSER
+  - zSH
+  - POEDIT
+  - MYSQL CLIENT
+  - POSTGRESQL CLIENT
+  - PHP CLIENT
+  - PHP-XML
   - HTOP
-- Instala as seguintes aplicações via **Flatpak**
+  - NEOFETCH
+  - **Syncthing** (via official APT repository)
+  - **Brave Browser** (via official Brave repository)
+- Installs the following applications via **Flatpak**
   - Slack
   - DBeaver
   - PostMan
-  - Docker GUI
+  - Docker GUI (Whaler)
   - Flat Seal
-- Instala as seguintes aplicações via **Snapcraft**
+  - Obsidian
+- Installs the following applications via **Snapcraft**
   - MySQL Workbench Community
-  - Brave Browser
-- Configura permissões de grupo para:
+- Configures group permissions for:
   - Docker
-- Extrai e adiciona as chaves `.ssh` caso informado o caminho para o arquivo.
-- Altera o shell padrão para o **OhMyZSH**
-  - Adiciona os plugins à configuração do OhMyZSH: git, docker, docker-compose, history
-  - Altera o tema para `sonicradish`
-- Cria o diretório `www` para utilização no Docker - PHP7
-- Configuração de container Docker 
-  - Cria a subrede `devnet` para utilização nos containers
-  - Container PHP 7
-  - Container MySQL 5.7
-  - Container MongoDB
+- Generates a new **Ed25519 SSH key** and displays the public key at the end with instructions to add it to GitHub.
+- Changes the default shell to **OhMyZSH**
+  - Adds plugins to OhMyZSH config: git, docker, docker-compose, history
+  - Changes theme to `sonicradish`
+- Creates the `www` directory for Docker PHP7 usage
+- Docker container setup
+  - Creates the `devnet` subnet for container networking
+  - PHP 7 container
+  - MySQL 5.7 container
+  - MongoDB container
