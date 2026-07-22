@@ -1,199 +1,234 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-echo "This script requires root permission to modify the system"
-sudo echo ""
+set -Eeuo pipefail
 
-echo "Hotfix to disable keyboard commands for Apple keyboards"
-echo "options hid_apple fnmode=0" | sudo tee -a /etc/modprobe.d/hid_apple.conf
+NODE_MAJOR="${NODE_MAJOR:-24}"
+COMPASS_VERSION="${COMPASS_VERSION:-1.49.11}"
+REBOOT_AFTER_INSTALL="${REBOOT_AFTER_INSTALL:-0}"
+INSTALL_LEGACY_STACK="${INSTALL_LEGACY_STACK:-0}"
 
-echo #blank line
-echo #blank line
+log() { printf '\n==> %s\n' "$*"; }
+die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 
-# Update the system
-echo "Updating the system"
-sudo apt update -y
-sudo apt upgrade -y
+[[ ${EUID} -ne 0 ]] || die "run this script as a regular user; it will request sudo when required"
+command -v sudo >/dev/null || die "sudo is not installed"
 
-echo #blank line
-echo #blank line
+source /etc/os-release
+case ${ID:-} in
+  ubuntu)
+    BASE_CODENAME=${VERSION_CODENAME:-}
+    ;;
+  linuxmint)
+    BASE_CODENAME=${UBUNTU_CODENAME:-}
+    ;;
+  *)
+    die "unsupported distribution: ${PRETTY_NAME:-${ID:-unknown}} (use Ubuntu or Linux Mint)"
+    ;;
+esac
+[[ -n $BASE_CODENAME ]] || die "could not identify the underlying Ubuntu release"
 
-# Install apt packages
-echo "Installing applications via APT"
-echo "CURL | WGET | GPG | BUILD ESSENTIALS | FLATPAK | GIT | DOCKER | DOCKER COMPOSER | zSH | POEDIT | MYSQL CLIENT | POSTGRESQL CLIENT | PHP CLIENT | PHP-XML | HTOP | NEOFETCH"
-sudo apt install -y curl wget gpg build-essential flatpak git docker.io docker-compose zsh poedit mysql-client postgresql-client htop neofetch php-cli php-xml
+TARGET_USER=$USER
+TARGET_HOME=$HOME
+ARCH=$(dpkg --print-architecture)
+[[ $ARCH == "amd64" ]] || die "this legacy stack (MySQL 5.7 and Compass) requires amd64"
 
-echo #blank line
-echo #blank line
+sudo -v
 
-# NodeSource repository
-echo "Adding NodeSource repository"
-curl -fsSL https://deb.nodesource.com/setup_23.x -o nodesource_setup.sh
-sudo -E bash nodesource_setup.sh
-# Install NodeJS
-echo "Installing - NodeJS"
-sudo apt-get install -y nodejs
-# Install NPM
-echo "Installing - NPM"
-sudo npm install -g npm
-# Install NPM Version Manager
-echo "Installing - NPM Version Manager"
-sudo npm install -g n
-
-echo #blank line
-echo #blank line
-
-#Microsoft repository
-echo "Adding Microsoft repository"
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-rm -f packages.microsoft.gpg
-echo "Installing - Visual Studio Code"
-sudo apt install apt-transport-https
-sudo apt update
-sudo apt install code
-
-echo #blank line
-echo #blank line
-
-#Flatpak repository
-echo "Adding Flatpak repository"
-sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-# Flatpak packages
-echo "Installing Flatpak packages"
-#echo "Installing - Google Chrome"
-#flatpak install -y flathub com.google.Chrome # Google Chrome
-echo "Installing - Slack"
-flatpak install -y flathub com.slack.Slack # Slack
-echo "Installing - DBeaver"
-flatpak install -y flathub io.dbeaver.DBeaverCommunity # Dbeaver
-echo "Installing - PostMan"
-flatpak install -y flathub com.getpostman.Postman # Postman
-echo "Installing - Docker GUI"
-flatpak install -y flathub com.github.sdv43.whaler # Docker GUI
-echo "Installing - Flat Seal"
-flatpak install -y flathub com.github.tchx84.Flatseal # Flat Seal - Flatpak Permission Manager
-echo "Installing - Obsidian"
-flatpak install -y flathub md.obsidian.Obsidian # Obsidian - Notes
-#flatpak install flathub org.gnome.DejaDup #Backup manager
-echo "Checking for package updates"
-sudo flatpak update
-
-echo #blank line
-echo #blank line
-
-#MongoDB Compass
-echo "Downloading - MongoDB Compass"
-wget https://downloads.mongodb.com/compass/mongodb-compass_1.44.5_amd64.deb
-echo "Installing - MongoDB Compass"
-sudo apt install ./mongodb-compass_1.44.5_amd64.deb
-echo "Removing file"
-rm ./mongodb-compass_1.44.5_amd64.deb
-
-echo #blank line
-echo #blank line
-
-# Brave Browser
-echo "Adding Brave repository"
-sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
-sudo apt update
-sudo apt install brave-browser
-
-echo #blank line
-echo #blank line
-
-# Syncthing
-echo "Adding Syncthing repository"
-sudo mkdir -p /etc/apt/keyrings
-sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable-v2" | sudo tee /etc/apt/sources.list.d/syncthing.list
-printf "Package: *\nPin: origin apt.syncthing.net\nPin-Priority: 990\n" | sudo tee /etc/apt/preferences.d/syncthing.pref
-echo "Installing - Syncthing"
+log "Updating the system"
 sudo apt-get update
-sudo apt-get install -y syncthing
+sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  apt-transport-https build-essential ca-certificates composer curl flatpak git \
+  gnupg htop jq mysql-client openssh-client openssl php-cli \
+  php-curl php-intl php-mbstring php-mysql php-sqlite3 php-xml php-zip poedit \
+  postgresql-client ripgrep shellcheck snapd tree unzip wget zip zsh
 
-echo #blank line
-echo #blank line
-
-# Snap packages
-echo "Installing Snapcraft packages"
-echo "Installing - MySQL Workbench Community"
-sudo snap install mysql-workbench-community
-echo "Checking for package updates"
-sudo snap refresh
-
-echo #blank line
-echo #blank line
-
-# Permission groups
-echo "Configuring permission groups"
-sudo usermod -G docker -a $USER
-
-# SSH key generation
-echo "Setting up SSH key"
-if [ ! -e "$HOME/.ssh/id_ed25519" ]; then
-	mkdir -p "$HOME/.ssh"
-	ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)-fresh-install" -N "" -f "$HOME/.ssh/id_ed25519"
-	eval "$(ssh-agent -s)"
-	ssh-add "$HOME/.ssh/id_ed25519"
-else
-	echo "SSH key already exists, skipping generation."
+log "Configuring the Apple keyboard fix when applicable"
+if [[ -d /sys/module/hid_apple ]]; then
+  printf '%s\n' 'options hid_apple fnmode=0' | sudo tee /etc/modprobe.d/hid_apple.conf >/dev/null
 fi
 
-echo #blank line
-echo #blank line
+log "Installing Node.js ${NODE_MAJOR} LTS"
+curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /tmp/nodesource_setup.sh
+sudo -E bash /tmp/nodesource_setup.sh
+rm -f /tmp/nodesource_setup.sh
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 
-# Install OhMyZSH
-echo "Changing default shell to OhMyZSH"
-sudo usermod -s $(which zsh) $USER
-#sudo chsh -s $(which zsh) $USER
-echo "Installing OhMyZSH"
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-sudo omz theme set sonicradish
-#Additional plugins for OhMyZSH
-echo "Adding plugins to OhMyZSH config"
-#echo "nano ~/.zshrc"
-echo "GIT | DOCKER | DOCKER COMPOSER | HISTORY"
-echo "plugins=(git docker docker-compose history)" | sudo tee -a ~/.zshrc
+log "Installing Docker Engine and Docker Compose"
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $BASE_CODENAME
+Components: stable
+Architectures: $ARCH
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker "$TARGET_USER"
+sudo systemctl enable --now docker
 
-echo #blank line
-echo #blank line
+log "Installing Visual Studio Code"
+curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
+  sudo tee /etc/apt/keyrings/packages.microsoft.gpg >/dev/null
+sudo chmod a+r /etc/apt/keyrings/packages.microsoft.gpg
+sudo tee /etc/apt/sources.list.d/vscode.sources >/dev/null <<EOF
+Types: deb
+URIs: https://packages.microsoft.com/repos/code
+Suites: stable
+Components: main
+Architectures: $ARCH
+Signed-By: /etc/apt/keyrings/packages.microsoft.gpg
+EOF
 
-#Project directory
-echo "Creating project directory"
-mkdir $HOME/www
+log "Installing Brave Browser"
+sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
+  https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources \
+  https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
 
-echo #blank line
-echo #blank line
+log "Installing Syncthing"
+sudo curl -fsSL -o /etc/apt/keyrings/syncthing-archive-keyring.gpg \
+  https://syncthing.net/release-key.gpg
+sudo tee /etc/apt/sources.list.d/syncthing.list >/dev/null <<'EOF'
+deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable-v2
+EOF
+sudo tee /etc/apt/preferences.d/syncthing.pref >/dev/null <<'EOF'
+Package: *
+Pin: origin apt.syncthing.net
+Pin-Priority: 990
+EOF
 
-#Creates a Docker subnet
-echo "Creating Docker subnet"
-sudo docker network create --subnet 172.18.0.0/16 devnet
-#Containers
-echo "Creating Docker containers"
-echo "Container - PHP 7"
-sudo docker run --network devnet --ip 172.18.0.10 -td --name php7 -p 80:80 -v $HOME/www:/www lhuggler/php7-xdebug
-echo "Container - MySQL 5.7"
-sudo docker run --network devnet --ip 172.18.0.20 -d --name mysql57 -p 3606:3606 -e MYSQL_ROOT_PASSWORD=segredo mysql:5.7 --sql-mode=""
-echo "Container - MongoDB"
-sudo docker run --network devnet --ip 172.18.0.30 -d --name mongo -p 27017:27017 mongo
+log "Configuring the GitHub CLI repository"
+sudo curl -fsSL -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  https://cli.github.com/packages/githubcli-archive-keyring.gpg
+sudo chmod a+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+printf 'deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' "$ARCH" | \
+  sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
-echo #blank line
-echo #blank line
-echo "============================================"
-echo "  FRESH INSTALL COMPLETE!"
-echo "============================================"
-echo #blank line
-echo "Add this SSH public key to your GitHub:"
-echo "  https://github.com/settings/ssh/new"
-echo #blank line
-cat "$HOME/.ssh/id_ed25519.pub"
-echo #blank line
-echo "============================================"
-echo #blank line
-echo #blank line
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y brave-browser code gh syncthing
 
-echo "System will reboot in 10s, press CTRL+C to cancel"
-sleep 10
-reboot 
+log "Installing Flatpak applications"
+sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+sudo flatpak install --system -y flathub \
+  com.slack.Slack io.dbeaver.DBeaverCommunity com.getpostman.Postman \
+  com.github.tchx84.Flatseal md.obsidian.Obsidian
+sudo flatpak update --system -y
+
+log "Installing MongoDB Compass ${COMPASS_VERSION}"
+COMPASS_DEB="/tmp/mongodb-compass_${COMPASS_VERSION}_amd64.deb"
+wget -q "https://downloads.mongodb.com/compass/mongodb-compass_${COMPASS_VERSION}_amd64.deb" -O "$COMPASS_DEB"
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$COMPASS_DEB"
+rm -f "$COMPASS_DEB"
+
+log "Installing MySQL Workbench"
+sudo snap install mysql-workbench-community || log "MySQL Workbench is unavailable through Snap; continuing without it"
+
+log "Configuring SSH and Zsh"
+mkdir -p "$TARGET_HOME/.ssh"
+chmod 700 "$TARGET_HOME/.ssh"
+if [[ ! -f "$TARGET_HOME/.ssh/id_ed25519" ]]; then
+  ssh-keygen -t ed25519 -C "${TARGET_USER}@$(hostname)-fresh-install" -N '' \
+    -f "$TARGET_HOME/.ssh/id_ed25519"
+fi
+
+if [[ ! -d "$TARGET_HOME/.oh-my-zsh" ]]; then
+  RUNZSH=no CHSH=no \
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
+touch "$TARGET_HOME/.zshrc"
+if grep -q '^ZSH_THEME=' "$TARGET_HOME/.zshrc"; then
+  sed -i 's/^ZSH_THEME=.*/ZSH_THEME="sonicradish"/' "$TARGET_HOME/.zshrc"
+else
+  printf '%s\n' 'ZSH_THEME="sonicradish"' >> "$TARGET_HOME/.zshrc"
+fi
+if grep -q '^plugins=' "$TARGET_HOME/.zshrc"; then
+  sed -i 's/^plugins=.*/plugins=(git docker docker-compose history)/' "$TARGET_HOME/.zshrc"
+else
+  printf '%s\n' 'plugins=(git docker docker-compose history)' >> "$TARGET_HOME/.zshrc"
+fi
+sudo usermod -s "$(command -v zsh)" "$TARGET_USER"
+
+log "Preparing project directories and legacy services"
+mkdir -p "$TARGET_HOME/www" "$TARGET_HOME/.config/fresh-install"
+chmod 700 "$TARGET_HOME/.config/fresh-install"
+ENV_FILE="$TARGET_HOME/.config/fresh-install/services.env"
+if [[ ! -f $ENV_FILE ]]; then
+  umask 077
+  {
+    printf 'MYSQL_ROOT_PASSWORD=%s\n' "$(openssl rand -hex 24)"
+    printf 'MONGO_ROOT_PASSWORD=%s\n' "$(openssl rand -hex 24)"
+  } > "$ENV_FILE"
+fi
+
+cat > "$TARGET_HOME/.config/fresh-install/compose.yaml" <<EOF
+services:
+  php7:
+    image: lhuggler/php7-xdebug
+    profiles: ["legacy"]
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - "$TARGET_HOME/www:/www"
+    restart: unless-stopped
+
+  mysql57:
+    image: mysql:5.7
+    profiles: ["legacy"]
+    environment:
+      MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:3606:3306"
+    volumes:
+      - mysql57_data:/var/lib/mysql
+    command: ["--sql-mode="]
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: \${MONGO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mysql57_data:
+  mongo_data:
+EOF
+
+if [[ $INSTALL_LEGACY_STACK == "1" ]]; then
+  sudo docker compose --profile legacy --env-file "$ENV_FILE" \
+    -f "$TARGET_HOME/.config/fresh-install/compose.yaml" up -d
+else
+  sudo docker compose --env-file "$ENV_FILE" \
+    -f "$TARGET_HOME/.config/fresh-install/compose.yaml" up -d
+fi
+
+printf '\n============================================\n'
+printf '  INSTALLATION COMPLETE\n'
+printf '============================================\n'
+printf 'Public SSH key (add it to GitHub):\n\n'
+cat "$TARGET_HOME/.ssh/id_ed25519.pub"
+printf '\n\nLocal credentials: %s\n' "$ENV_FILE"
+printf 'Compose: %s\n' "$TARGET_HOME/.config/fresh-install/compose.yaml"
+if [[ $INSTALL_LEGACY_STACK != "1" ]]; then
+  printf 'PHP 7/MySQL 5.7 were not started. Use INSTALL_LEGACY_STACK=1 to enable them.\n'
+fi
+printf 'Log out and back in to use Docker without sudo and activate Zsh as the default shell.\n'
+
+if [[ $REBOOT_AFTER_INSTALL == "1" ]]; then
+  log "Rebooting in 10 seconds; press Ctrl+C to cancel"
+  sleep 10
+  sudo reboot
+else
+  printf 'Automatic reboot is disabled. Use REBOOT_AFTER_INSTALL=1 to enable it.\n'
+fi
