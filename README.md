@@ -40,7 +40,6 @@ Both options can be combined in the same execution.
 - Docker Engine, Buildx, and Docker Compose from Docker's official repository
 - Visual Studio Code, Brave, Syncthing, and MongoDB Compass
 - Flatpak, Slack, DBeaver, Postman, Flatseal, and Obsidian
-- MySQL Workbench through Snap, when available
 - Zsh and Oh My Zsh with Git, Docker, Compose, and history plugins
 - An Ed25519 SSH key, while preserving an existing key
 - A `~/www` project directory

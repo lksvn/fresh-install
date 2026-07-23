@@ -41,7 +41,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   apt-transport-https build-essential ca-certificates composer curl flatpak git \
   gnupg htop jq mysql-client openssh-client openssl php-cli \
   php-curl php-intl php-mbstring php-mysql php-sqlite3 php-xml php-zip poedit \
-  postgresql-client ripgrep shellcheck snapd tree unzip wget zip zsh
+  postgresql-client ripgrep shellcheck tree unzip wget zip zsh
 
 log "Configuring the Apple keyboard fix when applicable"
 if [[ -d /sys/module/hid_apple ]]; then
@@ -125,9 +125,6 @@ COMPASS_DEB="/tmp/mongodb-compass_${COMPASS_VERSION}_amd64.deb"
 wget -q "https://downloads.mongodb.com/compass/mongodb-compass_${COMPASS_VERSION}_amd64.deb" -O "$COMPASS_DEB"
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$COMPASS_DEB"
 rm -f "$COMPASS_DEB"
-
-log "Installing MySQL Workbench"
-sudo snap install mysql-workbench-community || log "MySQL Workbench is unavailable through Snap; continuing without it"
 
 log "Configuring SSH and Zsh"
 mkdir -p "$TARGET_HOME/.ssh"
